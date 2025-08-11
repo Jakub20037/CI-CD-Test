@@ -1,0 +1,28 @@
+*
+{
+    margin: 0;
+    padding: 0;
+}
+
+body
+{
+    height: 100vh;
+}
+
+header
+{
+    height: 20%;
+    background-color: skyblue;
+}
+
+main
+{
+    height: 60%;
+    background-color: whitesmoke;
+}
+
+footer
+{
+    height: 20%;
+    background-color: skyblue;
+}
