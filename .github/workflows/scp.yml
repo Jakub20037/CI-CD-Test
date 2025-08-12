@@ -8,39 +8,45 @@ jobs:
   deploy:
     runs-on: self-hosted
  
+    # WICHTIG: Standard-Shell ist Windows PowerShell, nicht pwsh
+    defaults:
+      run:
+        shell: powershell
+ 
     env:
       VM_HOST: 10.3.15.56
-      VM_USER: azubi           
-      DEST_DIR: ~/ci_cd_test    
+      VM_USER: azubi          # <-- anpassen
+      DEST_DIR: ~/ci_cd_test   # <-- anpassen
       SSH_PORT: "22"
  
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
  
-      - name: Write SSH key (Windows)
-        shell: pwsh
+      - name: Write SSH key
         run: |
           New-Item -ItemType Directory -Path "$HOME\.ssh" -Force | Out-Null
           $keyPath = "$HOME\.ssh\id_rsa"
-          Set-Content -Path $keyPath -Value @"
+          @"
           ${{ secrets.SSH_PRIVATE_KEY }}
-          "@ -NoNewline
+          "@ | Set-Content -Path $keyPath -NoNewline
           icacls $keyPath /inheritance:r /grant:r "$($env:USERNAME):(R)" | Out-Null
           ssh-keyscan -p $env:SSH_PORT -H $env:VM_HOST | Out-File -FilePath "$HOME\.ssh\known_hosts" -Append
  
       - name: Ensure destination exists
-        shell: pwsh
         run: |
           ssh -i "$HOME\.ssh\id_rsa" -p "$env:SSH_PORT" "$env:VM_USER@$env:VM_HOST" "mkdir -p '$env:DEST_DIR'"
  
-      - name: Deploy via rsync
-        shell: powershell
+      - name: Deploy via scp
         run: |
-          rsync -az --delete \
-            --exclude ".git" \
-            --exclude ".github" \
-            -e "ssh -i $HOME/.ssh/id_rsa -p $SSH_PORT" \
-            ./ "$VM_USER@$VM_HOST:$DEST_DIR"
+          scp -i "$HOME\.ssh\id_rsa" -P "$env:SSH_PORT" -r . "$env:VM_USER@$env:VM_HOST:$env:DEST_DIR"
  
-    
+      # Falls du lieber rsync nutzt (und es installiert ist), ersetze obigen Step durch:
+      # - name: Deploy via rsync
+      #   shell: bash
+      #   run: |
+      #     rsync -az --delete \
+      #       --exclude ".git" \
+      #       --exclude ".github" \
+      #       -e "ssh -i $HOME/.ssh/id_rsa -p $SSH_PORT" \
+      #       ./ "$VM_USER@$VM_HOST:$DEST_DIR"
