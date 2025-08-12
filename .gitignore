@@ -1,1 +1,5 @@
-actions-runner
+actions-runner/
+_work/
+_diag/
+.runner
+*.log
