@@ -10,29 +10,37 @@ jobs:
  
     env:
       VM_HOST: 10.3.15.56
-      VM_USER: username
-      DEST_DIR: /pfad/zum/ziel
+      VM_USER: azubi           
+      DEST_DIR: ~/ci_cd_test    
       SSH_PORT: "22"
  
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
  
-      - name: Start ssh-agent and add key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
- 
-      - name: Trust host key
-        run: ssh-keyscan -p "$SSH_PORT" -H "$VM_HOST" >> ~/.ssh/known_hosts
+      - name: Write SSH key (Windows)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "$HOME\.ssh" -Force | Out-Null
+          $keyPath = "$HOME\.ssh\id_rsa"
+          Set-Content -Path $keyPath -Value @"
+          ${{ secrets.SSH_PRIVATE_KEY }}
+          "@ -NoNewline
+          icacls $keyPath /inheritance:r /grant:r "$($env:USERNAME):(R)" | Out-Null
+          ssh-keyscan -p $env:SSH_PORT -H $env:VM_HOST | Out-File -FilePath "$HOME\.ssh\known_hosts" -Append
  
       - name: Ensure destination exists
-        run: ssh -p "$SSH_PORT" "$VM_USER@$VM_HOST" "mkdir -p '$DEST_DIR'"
+        shell: pwsh
+        run: |
+          ssh -i "$HOME\.ssh\id_rsa" -p "$env:SSH_PORT" "$env:VM_USER@$env:VM_HOST" "mkdir -p '$env:DEST_DIR'"
  
       - name: Deploy via rsync
+        shell: bash
         run: |
           rsync -az --delete \
             --exclude ".git" \
             --exclude ".github" \
-            -e "ssh -p $SSH_PORT" \
+            -e "ssh -i $HOME/.ssh/id_rsa -p $SSH_PORT" \
             ./ "$VM_USER@$VM_HOST:$DEST_DIR"
+ 
+    
