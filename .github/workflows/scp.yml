@@ -2,47 +2,33 @@ name: Deploy to VM
  
 on:
   push:
-    branches:
-      - main   # ggf. anpassen
+    branches: [ main ]
  
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
  
     env:
       VM_HOST: 10.3.15.56
-      VM_USER: username            # <-- anpassen (oder als Secret halten)
-      DEST_DIR: /pfad/zum/ziel     # <-- anpassen
-      SSH_PORT: "22"               # falls anders, hier anpassen
+      VM_USER: username
+      DEST_DIR: /pfad/zum/ziel
+      SSH_PORT: "22"
  
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
  
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-<<<<<<< HEAD
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H 10.3.15.56 >> ~/.ssh/known_hosts 
-
-      - name: Copy files via SCP
-=======
-          # Privaten Key aus Secret schreiben
-          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+      - name: Start ssh-agent and add key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
  
-          # Host Key der VM einmalig aufnehmen (damit StrictHostKeyChecking nicht nachfragt)
-          ssh-keyscan -p "$SSH_PORT" -H "$VM_HOST" >> ~/.ssh/known_hosts
+      - name: Trust host key
+        run: ssh-keyscan -p "$SSH_PORT" -H "$VM_HOST" >> ~/.ssh/known_hosts
  
-      # Optional: Zielordner auf der VM sicherstellen
-      - name: Ensure destination directory exists
->>>>>>> b2c62ab (Test 1)
-        run: |
-          ssh -p "$SSH_PORT" "$VM_USER@$VM_HOST" "mkdir -p '$DEST_DIR'"
+      - name: Ensure destination exists
+        run: ssh -p "$SSH_PORT" "$VM_USER@$VM_HOST" "mkdir -p '$DEST_DIR'"
  
-      # Deployment: rsync ist idempotent und schneller als scp -r
       - name: Deploy via rsync
         run: |
           rsync -az --delete \
