@@ -15,9 +15,9 @@ jobs:
     env:
       VM_HOST: 10.3.15.56
       VM_USER: azubi
-      DEST_DIR: /home/azubi/ci_cd_test    
+      DEST_DIR: /home/azubi/ci_cd_test 
       SSH_PORT: "22"
-      # KEX-Fallback für älteren Windows-OpenSSH-Client. Nach Update entfernen.
+      # Fallback für älteren Windows-OpenSSH-Client
       KEX: curve25519-sha256,diffie-hellman-group14-sha256
  
     steps:
@@ -29,32 +29,33 @@ jobs:
           $KeyPath    = Join-Path $env:RUNNER_TEMP "id_rsa"
           $KnownHosts = Join-Path $env:RUNNER_TEMP "known_hosts"
  
-          # Private Key (aus Secret) in Temp schreiben
+          # Private Key aus Secret schreiben
           @"
           ${{ secrets.SSH_PRIVATE_KEY }}
           "@ | Set-Content -Path $KeyPath -NoNewline -Encoding ascii
  
-          # Rechte restriktiv (nur lesen für aktuellen User)
+          # Rechte restriktiv
           icacls $KeyPath /inheritance:r /grant:r "$($env:USERNAME):(R)" | Out-Null
  
-          # known_hosts generieren (mit KEX-Fallback)
-          ssh-keyscan -p $env:SSH_PORT -o "KexAlgorithms=$env:KEX" -H $env:VM_HOST |
-            Out-File -FilePath $KnownHosts -Append -Encoding ascii
+          # Leere known_hosts Datei anlegen
+          New-Item -ItemType File -Path $KnownHosts -Force | Out-Null
  
-          # Pfade für spätere Steps exportieren
+          # Pfade exportieren
           "KEY_PATH=$KeyPath"       | Out-File -FilePath $env:GITHUB_ENV -Append
           "KNOWN_HOSTS=$KnownHosts" | Out-File -FilePath $env:GITHUB_ENV -Append
  
-      - name: Ensure destination exists (do not quote ~)
+      - name: Ensure destination exists (skip host key check)
         run: |
           ssh -i "$env:KEY_PATH" -p "$env:SSH_PORT" `
             -o "UserKnownHostsFile=$env:KNOWN_HOSTS" `
+            -o "StrictHostKeyChecking=no" `
             -o "KexAlgorithms=$env:KEX" `
             "$env:VM_USER@$env:VM_HOST" "mkdir -p $env:DEST_DIR"
  
-      - name: Deploy via scp (do not quote ~)
+      - name: Deploy via scp (skip host key check)
         run: |
           scp -i "$env:KEY_PATH" -P "$env:SSH_PORT" `
             -o "UserKnownHostsFile=$env:KNOWN_HOSTS" `
+            -o "StrictHostKeyChecking=no" `
             -o "KexAlgorithms=$env:KEX" `
             -r . "$env:VM_USER@$env:VM_HOST:$env:DEST_DIR"
