@@ -8,16 +8,16 @@ jobs:
   deploy:
     runs-on: self-hosted
  
-    # WICHTIG: Standard-Shell ist Windows PowerShell, nicht pwsh
     defaults:
       run:
         shell: powershell
  
     env:
       VM_HOST: 10.3.15.56
-      VM_USER: azubi          # <-- anpassen
-      DEST_DIR: ~/ci_cd_test   # <-- anpassen
+      VM_USER: azubi
+      DEST_DIR: ~/ci_cd_test
       SSH_PORT: "22"
+      KEX: curve25519-sha256,diffie-hellman-group14-sha256
  
     steps:
       - name: Checkout repo
@@ -31,22 +31,18 @@ jobs:
           ${{ secrets.SSH_PRIVATE_KEY }}
           "@ | Set-Content -Path $keyPath -NoNewline
           icacls $keyPath /inheritance:r /grant:r "$($env:USERNAME):(R)" | Out-Null
-          ssh-keyscan -p $env:SSH_PORT -H $env:VM_HOST | Out-File -FilePath "$HOME\.ssh\known_hosts" -Append
  
-      - name: Ensure destination exists
+      - name: Add host key (compat KEX)
         run: |
-          ssh -i "$HOME\.ssh\id_rsa" -p "$env:SSH_PORT" "$env:VM_USER@$env:VM_HOST" "mkdir -p '$env:DEST_DIR'"
+          ssh-keyscan -p $env:SSH_PORT -o "KexAlgorithms=$env:KEX" -H $env:VM_HOST |
+            Out-File -FilePath "$HOME\.ssh\known_hosts" -Append
  
-      - name: Deploy via scp
+      - name: Ensure destination exists (do not quote ~)
         run: |
-          scp -i "$HOME\.ssh\id_rsa" -P "$env:SSH_PORT" -r . "$env:VM_USER@$env:VM_HOST:$env:DEST_DIR"
+          ssh -i "$HOME\.ssh\id_rsa" -p "$env:SSH_PORT" -o "KexAlgorithms=$env:KEX" `
+            "$env:VM_USER@$env:VM_HOST" "mkdir -p $env:DEST_DIR"
  
-      # Falls du lieber rsync nutzt (und es installiert ist), ersetze obigen Step durch:
-      # - name: Deploy via rsync
-      #   shell: bash
-      #   run: |
-      #     rsync -az --delete \
-      #       --exclude ".git" \
-      #       --exclude ".github" \
-      #       -e "ssh -i $HOME/.ssh/id_rsa -p $SSH_PORT" \
-      #       ./ "$VM_USER@$VM_HOST:$DEST_DIR"
+      - name: Deploy via scp (do not quote ~)
+        run: |
+          scp -i "$HOME\.ssh\id_rsa" -P "$env:SSH_PORT" -o "KexAlgorithms=$env:KEX" `
+            -r . "$env:VM_USER@$env:VM_HOST:$env:DEST_DIR"
