@@ -1,0 +1,11 @@
+﻿{
+  "agentId": 21,
+  "agentName": "C20322",
+  "poolId": 1,
+  "poolName": "Default",
+  "serverUrl": "https://pipelinesghubeus7.actions.githubusercontent.com/JNr0cDFyhXd4EI1gljpacUiCCUh8Ehd2gOjEJNfnxFifnMa9dg/",
+  "gitHubUrl": "https://github.com/Jakub20037/CI-CD-Test",
+  "workFolder": "CI-CD-Test-Repository",
+  "useV2Flow": true,
+  "serverUrlV2": "https://broker.actions.githubusercontent.com/"
+}
