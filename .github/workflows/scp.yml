@@ -35,7 +35,7 @@ jobs:
           ssh -i "$HOME\.ssh\id_rsa" -p "$env:SSH_PORT" "$env:VM_USER@$env:VM_HOST" "mkdir -p '$env:DEST_DIR'"
  
       - name: Deploy via rsync
-        shell: bash
+        shell: powershell
         run: |
           rsync -az --delete \
             --exclude ".git" \
