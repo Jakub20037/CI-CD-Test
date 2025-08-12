@@ -15,7 +15,7 @@ jobs:
     env:
       VM_HOST: 10.3.15.56
       VM_USER: azubi
-      DEST_DIR: ~/ci_cd_test
+      DEST_DIR: /home/azubi/ci_cd_test
       SSH_PORT: "22"
       KEX: curve25519-sha256,diffie-hellman-group14-sha256
  
